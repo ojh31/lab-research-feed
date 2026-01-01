@@ -1,6 +1,13 @@
-# Anthropic Research Feed
+# AI Research Feed
 
-Scrapes the Anthropic research page for new publications and sends email notifications via Mailgun.
+Scrapes research updates from Anthropic and OpenAI and sends email notifications via Mailgun for new publications since the last business day.
+
+## Features
+
+- **Anthropic**: Scrapes https://www.anthropic.com/research directly
+- **OpenAI**: Parses https://openai.com/news/rss.xml RSS feed (filters for research-related content)
+- Filters papers published after the last business day
+- Sends combined email notifications grouped by source
 
 ## Setup
 
@@ -20,9 +27,9 @@ pip install -r requirements.txt
 echo "your-mailgun-api-key" > key.txt
 ```
 
-4. Update the Mailgun domain and recipient email in `main.py`:
-   - Line 105: Update the Mailgun domain URL
-   - Line 109: Update the recipient email address
+4. Update the Mailgun domain and recipient email in [main.py](main.py):
+   - Line 180: Update the Mailgun domain URL
+   - Line 184: Update the recipient email address
 
 ## Usage
 
@@ -32,9 +39,9 @@ python main.py
 ```
 
 The script will:
-- Scrape https://www.anthropic.com/research
-- Filter papers published since the last business day
-- Send an email notification if new papers are found
+- Scrape both Anthropic and OpenAI sources
+- Filter papers published after the last business day
+- Send an email notification if new papers are found (grouped by source)
 
 ## Scheduling
 
