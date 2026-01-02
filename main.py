@@ -219,8 +219,7 @@ def main():
 
     print(f"\nTotal papers found: {len(all_papers)}")
 
-    # last_business_day = get_last_business_day()
-    last_business_day = datetime(2025, 12, 16)
+    last_business_day = get_last_business_day()
     print(f"Checking for papers published after: {last_business_day.date()}")
 
     new_papers = filter_new_papers(all_papers, last_business_day)
