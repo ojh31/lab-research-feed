@@ -1,10 +1,14 @@
+import os
 from datetime import datetime, time, timedelta
+from pathlib import Path
 from typing import Dict, List
 
 import feedparser
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser
+
+ROOT = Path(__file__).resolve().parent
 
 
 def get_last_business_day():
@@ -115,6 +119,59 @@ def scrape_openai_research() -> List[Dict[str, str]]:
         return []
 
 
+def scrape_goodfire_research() -> List[Dict[str, str]]:
+    """Scrape from Goodfire's research page."""
+    url = "https://www.goodfire.ai/research"
+    response = requests.get(url)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.content, "html.parser")
+    papers = []
+
+    for item in soup.find_all("div", class_="blog-c-item"):
+        link_elem = item.find("a", class_="link-block", href=True)
+        if not link_elem:
+            continue
+        href = link_elem.get("href", "")
+        if not href.startswith("/research/"):
+            continue
+
+        title_elem = item.find("h2", class_="heading-style-h3")
+        if not title_elem:
+            continue
+        title = title_elem.get_text(strip=True)
+
+        # Find the date by checking each author/meta cell for a parseable date
+        date_str = ""
+        for d in item.find_all("div", class_="authors-c-item-list"):
+            text = d.get_text(strip=True)
+            try:
+                parser.parse(text)
+                date_str = text
+                break
+            except (ValueError, TypeError):
+                continue
+
+        papers.append(
+            {
+                "title": title,
+                "url": f"https://www.goodfire.ai{href}",
+                "date": date_str,
+                "source": "Goodfire",
+            }
+        )
+
+    # Remove duplicates by URL
+    seen_urls = set()
+    unique_papers = []
+    for paper in papers:
+        if paper["url"] not in seen_urls:
+            seen_urls.add(paper["url"])
+            unique_papers.append(paper)
+
+    return unique_papers
+
+
 def filter_new_papers(
     papers: List[Dict[str, str]], since_date: datetime
 ) -> List[Dict[str, str]]:
@@ -179,8 +236,10 @@ def create_email_html(papers: List[Dict[str, str]]) -> str:
 
 
 def send_simple_message(subject: str, html: str):
-    with open("key.txt", "r") as file:
-        api_key = file.read().strip()
+    api_key = os.environ.get("MAILGUN_API_KEY")
+    if not api_key:
+        with open(ROOT / "key.txt", "r") as file:
+            api_key = file.read().strip()
     response = requests.post(
         "https://api.mailgun.net/v3/sandbox9e8f7a4f3d3d469c9c07ce895892fa11.mailgun.org/messages",  # noqa: E501
         auth=("api", api_key),
@@ -216,6 +275,15 @@ def main():
         all_papers.extend(openai_papers)
     except Exception as e:
         print(f"Skipping OpenAI scraping due to error: {type(e).__name__}")
+
+    # Scrape Goodfire
+    print("\nScraping Goodfire research page...")
+    try:
+        goodfire_papers = scrape_goodfire_research()
+        print(f"Found {len(goodfire_papers)} Goodfire papers")
+        all_papers.extend(goodfire_papers)
+    except Exception as e:
+        print(f"Error scraping Goodfire: {e}")
 
     print(f"\nTotal papers found: {len(all_papers)}")
 

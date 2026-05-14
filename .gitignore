@@ -11,3 +11,5 @@ dist/
 build/
 key.txt
 .env
+output/
+.vscode/

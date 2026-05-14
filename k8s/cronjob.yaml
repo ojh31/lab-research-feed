@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lab-research-feed
+spec:
+  schedule: "0 12 * * 1-5"  # weekdays at noon UTC
+  jobTemplate:
+    metadata:
+      labels:
+        kueue.x-k8s.io/queue-name: farai
+        cronjob-name: lab-research-feed
+    spec:
+      suspend: true
+      backoffLimit: 2
+      podFailurePolicy:
+        rules:
+          - action: Ignore
+            onPodConditions:
+              - type: DisruptionTarget
+                status: "True"
+      template:
+        spec:
+          restartPolicy: Never
+          priorityClassName: normal-batch
+          imagePullSecrets:
+            - name: docker
+          containers:
+            - name: lab-research-feed
+              image: "ghcr.io/alignmentresearch/lab-research-feed:latest"
+              resources:
+                requests:
+                  cpu: 1
+                  memory: "512Mi"
+                limits:
+                  memory: "1Gi"
+              env:
+                - name: MAILGUN_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: arxiv-feed-secrets
+                      key: mailgun-api-key
